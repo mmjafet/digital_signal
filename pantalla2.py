@@ -5,9 +5,12 @@ import cv2
 import numpy as np
 from PIL import Image
 import io
+from websocket import create_connection
+import threading
 
-# Configuración de la API
+# Configuración de la API y WebSocket
 API_URL = "http://172.168.0.104:9999/media"  # Cambia la IP del servidor correcta
+WS_URL = "ws://172.168.0.104:9999/socket.io/?transport=websocket"  # URL del WebSocket
 
 # Pygame - Mostrar en la pantalla de la Raspberry Pi
 def display_on_screen():
@@ -21,44 +24,57 @@ def display_on_screen():
 
     clock = pygame.time.Clock()
 
+    # Hilo para manejar la recepción de mensajes del WebSocket
+    def websocket_listener():
+        ws = create_connection(WS_URL)
+        while True:
+            try:
+                result = ws.recv()
+                if result:
+                    handle_websocket_message(result, screen, screen_width, screen_height)
+            except Exception as e:
+                print(f"Error al recibir mensaje del WebSocket: {e}")
+                break
+
+    # Iniciar el hilo del WebSocket
+    threading.Thread(target=websocket_listener, daemon=True).start()
+
+    # Mantener la ventana abierta
     while True:
-        try:
-            # Obtener el contenido multimedia desde la API
-            response = requests.get(API_URL)
-            media_content = response.json()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                return
 
-            # Si todo el contenido está vacío, limpiar pantalla con divisiones y mensaje
-            if all(value is None for value in media_content.values()):
-                clear_screen_with_message(screen, screen_width, screen_height)
-                pygame.display.flip()
-                clock.tick(1)  # Esperar un segundo antes de consultar nuevamente
-                continue
+        clock.tick(60)
 
-            # Renderizar el contenido en la pantalla
-            screen.fill((0, 0, 0))  # Fondo negro
+def handle_websocket_message(message, screen, screen_width, screen_height):
+    try:
+        response = requests.get(API_URL)
+        media_content = response.json()
 
-            # Mostrar video
-            if media_content["video"]:
-                play_video_from_base64(media_content["video"], screen_width, screen_height)
+        screen.fill((0, 0, 0))  # Fondo negro
 
-            # Mostrar imagen 1
-            if media_content["image1"]:
-                img_surface = base64_to_surface(media_content["image1"], screen_width // 2, screen_height // 2)
-                if img_surface:
-                    screen.blit(img_surface, (0, screen_height // 2))
+        # Mostrar video
+        if media_content["video"]:
+            play_video_from_base64(media_content["video"], screen_width, screen_height)
 
-            # Mostrar imagen 2 o GIF
-            if media_content["image2"]:
-                img_surface = base64_to_surface(media_content["image2"], screen_width // 2, screen_height // 2)
-                if img_surface:
-                    screen.blit(img_surface, (screen_width // 2, screen_height // 2))
+        # Mostrar imagen 1
+        if media_content["image1"]:
+            img_surface = base64_to_surface(media_content["image1"], screen_width // 2, screen_height // 2)
+            if img_surface:
+                screen.blit(img_surface, (0, screen_height // 2))
 
-            pygame.display.flip()
+        # Mostrar imagen 2 o GIF
+        if media_content["image2"]:
+            img_surface = base64_to_surface(media_content["image2"], screen_width // 2, screen_height // 2)
+            if img_surface:
+                screen.blit(img_surface, (screen_width // 2, screen_height // 2))
 
-        except Exception as e:
-            print(f"Error al obtener o mostrar contenido multimedia: {e}")
+        pygame.display.flip()
 
-        clock.tick(1)  # Actualiza una vez por segundo
+    except Exception as e:
+        print(f"Error al actualizar contenido multimedia: {e}")
 
 def play_video_from_base64(base64_string, screen_width, screen_height):
     try:
@@ -77,17 +93,14 @@ def play_video_from_base64(base64_string, screen_width, screen_height):
                 break
 
             frame = cv2.resize(frame, (screen_width, screen_height))
-            
             frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
             frame_surface = pygame.surfarray.make_surface(frame_rgb)
 
             screen.blit(frame_surface, (0, 0))
             pygame.display.flip()
-
             pygame.time.delay(30)
 
-        cap.release()  # Liberar el video
+        cap.release()
 
     except Exception as e:
         print(f"Error al reproducir video: {e}")
@@ -99,7 +112,6 @@ def base64_to_surface(base64_string, max_width, max_height):
 
         image.thumbnail((max_width, max_height), Image.LANCZOS)
 
-        # Convertir la imagen redimensionada a una superficie de Pygame
         mode = image.mode
         size = image.size
         data = image.tobytes()
@@ -109,12 +121,11 @@ def base64_to_surface(base64_string, max_width, max_height):
         return None
 
 def clear_screen_with_message(screen, screen_width, screen_height):
-    # Fondo de color gris claro
     screen.fill((200, 200, 200))
 
-    pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, 0, screen_width, screen_height // 2), 3)  # División superior
-    pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, screen_height // 2, screen_width // 2, screen_height // 2), 3)  # División izquierda
-    pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2), 3)  # División derecha
+    pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, 0, screen_width, screen_height // 2), 3)
+    pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, screen_height // 2, screen_width // 2, screen_height // 2), 3)
+    pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2), 3)
 
     draw_text(screen, "VIDEO", screen_width // 2, screen_height // 4, (0, 0, 0), screen_width)
     draw_text(screen, "IMAGEN 1", screen_width // 4, screen_height * 3 // 4, (0, 0, 0), screen_width)
