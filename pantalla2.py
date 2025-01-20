@@ -7,7 +7,7 @@ from PIL import Image
 import io
 
 # Configuración de la API
-API_URL = "http://172.168.2.209:9999/media"  # Cambia 172.168.2.209 por la IP del servidor correcta
+API_URL = "http://172.168.0.104:9999/media"  # Cambia 172.168.2.209 por la IP del servidor correcta
 
 
 # Pygame - Mostrar en la pantalla de la Raspberry Pi

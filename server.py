@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_socketio import SocketIO
 import base64
 
-app = Flask(_name_)
+app = Flask(__name__)
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")  # Habilitamos WebSocket
 
@@ -45,5 +45,5 @@ def display_web():
 def display():
     return render_template("media.html", media=media_content)
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     socketio.run(app, host='0.0.0.0', port=9999)
