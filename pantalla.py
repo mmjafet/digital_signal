@@ -7,7 +7,7 @@ import io
 API_URL = "https://pantalla-anuncios-rasp.onrender.com/media"
 
 # Definir color de fondo
-BACKGROUND_COLOR = (50, 50, 50)  # Gris oscuro (puedes elegir otro color si lo prefieres)
+BACKGROUND_COLOR = (50, 50, 50)  # Gris oscuro (puedes elegir otro color si lo prefieras)
 
 def display_images_on_screen():
     pygame.init()
@@ -40,9 +40,9 @@ def display_images_on_screen():
             if media_content.get("image2"):
                 display_image(screen, media_content["image2"], screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2, adjust_size=False)
 
-            # Mostrar imagen 3 en la parte superior sin ajustar su tamaño
-            if media_content.get("image3"):
-                display_image(screen, media_content["image3"], 0, 0, screen_width, screen_height // 2, adjust_size=False)
+            # Reproducir video en la parte superior sin ajustar su tamaño
+            if media_content.get("video"):
+                play_video(screen, media_content["video"], 0, 0, screen_width, screen_height // 2)
 
             pygame.display.flip()
 
@@ -73,6 +73,24 @@ def display_image(screen, base64_string, x, y, width, height, adjust_size=True):
         screen.blit(image, img_rect)
     except Exception as e:
         print(f"Error al convertir imagen: {e}")
+
+def play_video(screen, base64_video_string, x, y, width, height):
+    try:
+        video_data = base64.b64decode(base64_video_string)
+        video_file = io.BytesIO(video_data)
+        movie = pygame.movie.Movie(video_file)
+        movie_screen = pygame.Surface((width, height)).convert()
+
+        movie.set_display(movie_screen, (x, y, width, height))
+        movie.play()
+
+        while movie.get_busy():
+            screen.fill(BACKGROUND_COLOR)
+            screen.blit(movie_screen, (x, y))
+            pygame.display.update()
+            pygame.time.delay(10)
+    except Exception as e:
+        print(f"Error al reproducir video: {e}")
 
 if __name__ == '__main__':
     display_images_on_screen()
