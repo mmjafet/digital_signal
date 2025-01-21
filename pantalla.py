@@ -40,6 +40,10 @@ def display_images_on_screen():
             if media_content["image2"]:
                 display_image(screen, media_content["image2"], screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2)
 
+            # Mostrar imagen 3 en la parte superior
+            if media_content["image3"]:
+                display_image(screen, media_content["image3"], 0, 0, screen_width, screen_height // 2)
+
             pygame.display.flip()
 
         except Exception as e:
