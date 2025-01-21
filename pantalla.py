@@ -4,6 +4,7 @@ import pygame
 import io
 import tempfile
 import os
+import cv2  # Importar OpenCV
 
 # Configuración de la API
 API_URL = "https://pantalla-anuncios-rasp.onrender.com/media"
@@ -84,16 +85,23 @@ def play_video(screen, base64_string, x, y, width, height):
         temp_file.write(video_data)
         temp_file.close()
 
-        # Reproducir el video
-        movie = pygame.movie.Movie(temp_file.name)
-        if movie.has_video():
-            movie.set_display(screen, (x, y, width, height))
-            movie.play()
+        # Usar OpenCV para reproducir el video
+        cap = cv2.VideoCapture(temp_file.name)
+        
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            # Convertir frame de BGR a RGB para pygame
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = cv2.resize(frame, (width, height))
+            frame_surface = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
+            screen.blit(frame_surface, (x, y))
+            pygame.display.update()
+            pygame.time.delay(int(1000 / cap.get(cv2.CAP_PROP_FPS)))
 
-            while movie.get_busy():
-                pygame.display.update()
-                pygame.time.wait(100)
-
+        cap.release()
         # Eliminar el archivo temporal
         os.remove(temp_file.name)
 
