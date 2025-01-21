@@ -40,9 +40,9 @@ def display_images_on_screen():
             if media_content["image2"]:
                 display_image(screen, media_content["image2"], screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2)
 
-            # Mostrar imagen 3 en la parte superior
+            # Mostrar imagen 3 en la parte superior sin ajustar su tamaño
             if media_content["image3"]:
-                display_image(screen, media_content["image3"], 0, 0, screen_width, screen_height // 2)
+                display_image(screen, media_content["image3"], 0, 0, screen_width, screen_height // 2, adjust_size=False)
 
             pygame.display.flip()
 
@@ -51,11 +51,17 @@ def display_images_on_screen():
 
         clock.tick(30)  # Ajustar a 30 FPS para evitar sobrecarga
 
-def display_image(screen, base64_string, x, y, width, height):
+def display_image(screen, base64_string, x, y, width, height, adjust_size=True):
     try:
         image_data = base64.b64decode(base64_string)
         image = pygame.image.load(io.BytesIO(image_data))
-        image = pygame.transform.scale(image, (width, height))
+        
+        if adjust_size:
+            image = pygame.transform.scale(image, (width, height))
+        
+        # Obtener el color promedio de la imagen para el fondo
+        avg_color = pygame.transform.average_color(image)
+        screen.fill(avg_color, (x, y, width, height))
 
         # Centrar la imagen en su respectiva área
         img_rect = image.get_rect(center=(x + width // 2, y + height // 2))
