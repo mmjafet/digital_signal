@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from flask_socketio import SocketIO
+import signal
 import base64
 
 app = Flask(__name__)
@@ -8,40 +9,38 @@ CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 media_content = {
-    "video": None,  # Base64 del video
-    "image1": None,  # Base64 de la imagen 1
-    "image2": None,   # Base64 de la imagen 2
+    "video": None,
+    "image1": None,
+    "image2": None,
     "image3": None
 }
 
 @app.route('/upload', methods=['POST'])
-def upload():
-    data = request.json
-    if not data or 'position' not in data or 'file' not in data:
-        return jsonify({"error": "Datos inválidos"}), 400
-
-    position = data['position']
-    file_data = data['file']
-
-    if position not in media_content:
-        return jsonify({"error": f"Posición '{position}' no válida"}), 400
-
-    media_content[position] = file_data
-    # Notifica a los clientes conectados que se ha actualizado el contenido
-    socketio.emit('update_media', {'position': position, 'file': file_data})
-    return jsonify({"message": f"Contenido actualizado en '{position}'"}), 200
+def upload_media():
+    global media_content
+    try:
+        data = request.json
+        if 'video' in data:
+            media_content['video'] = data['video']
+        if 'image1' in data:
+            media_content['image1'] = data['image1']
+        if 'image2' in data:
+            media_content['image2'] = data['image2']
+        if 'image3' in data:
+            media_content['image3'] = data['image3']
+        return jsonify({"status": "success"}), 200
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
 
 @app.route('/media', methods=['GET'])
 def get_media():
-    return jsonify(media_content)
+    return jsonify(media_content), 200
 
-@app.route('/')
-def display_web():
-    return render_template("index.html")
+def signal_handler(sig, frame):
+    print('Shutting down server...')
+    socketio.stop()
 
-@app.route('/da')
-def display():
-    return render_template("media.html", media=media_content)
+signal.signal(signal.SIGINT, signal_handler)
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=9999)
+    socketio.run(app, host='0.0.0.0', port=5000)
