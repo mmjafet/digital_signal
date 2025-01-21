@@ -1,17 +1,14 @@
 import requests
 import base64
 import pygame
-import cv2
-import numpy as np
 from PIL import Image
 import io
 from websocket import create_connection
 import threading
 
 # Configuración de la API y WebSocket
-API_URL = "http://172.168.0.104:9999/media"  # Cambia la IP del servidor correcta
-WS_URL = "ws://172.168.0.104:9999/socket.io/?transport=websocket"  # URL del WebSocket
-
+API_URL = "http://127.0.0.1:9999/media"  # Cambia la IP del servidor correcta
+WS_URL = "ws://127.0.0.1:9999/socket.io/?transport=websocket"  # URL del WebSocket
 # Pygame - Mostrar en la pantalla de la Raspberry Pi
 def display_on_screen():
     pygame.init()
@@ -55,55 +52,28 @@ def handle_websocket_message(message, screen, screen_width, screen_height):
 
         screen.fill((0, 0, 0))  # Fondo negro
 
-        # Mostrar video
-        if media_content["video"]:
-            play_video_from_base64(media_content["video"], screen_width, screen_height)
-
         # Mostrar imagen 1
         if media_content["image1"]:
             img_surface = base64_to_surface(media_content["image1"], screen_width // 2, screen_height // 2)
             if img_surface:
                 screen.blit(img_surface, (0, screen_height // 2))
 
-        # Mostrar imagen 2 o GIF
+        # Mostrar imagen 2
         if media_content["image2"]:
             img_surface = base64_to_surface(media_content["image2"], screen_width // 2, screen_height // 2)
             if img_surface:
                 screen.blit(img_surface, (screen_width // 2, screen_height // 2))
 
+        # Mostrar imagen 3
+        if media_content["image3"]:
+            img_surface = base64_to_surface(media_content["image3"], screen_width // 2, screen_height // 2)
+            if img_surface:
+                screen.blit(img_surface, (screen_width // 2, 0))
+
         pygame.display.flip()
 
     except Exception as e:
         print(f"Error al actualizar contenido multimedia: {e}")
-
-def play_video_from_base64(base64_string, screen_width, screen_height):
-    try:
-        # Decodificar el video Base64
-        video_data = base64.b64decode(base64_string)
-        video_file = io.BytesIO(video_data)
-
-        with open("temp_video.mp4", "wb") as f:
-            f.write(video_file.read())
-
-        cap = cv2.VideoCapture("temp_video.mp4")
-
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            frame = cv2.resize(frame, (screen_width, screen_height))
-            frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            frame_surface = pygame.surfarray.make_surface(frame_rgb)
-
-            screen.blit(frame_surface, (0, 0))
-            pygame.display.flip()
-            pygame.time.delay(30)
-
-        cap.release()
-
-    except Exception as e:
-        print(f"Error al reproducir video: {e}")
 
 def base64_to_surface(base64_string, max_width, max_height):
     try:
@@ -127,9 +97,9 @@ def clear_screen_with_message(screen, screen_width, screen_height):
     pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, screen_height // 2, screen_width // 2, screen_height // 2), 3)
     pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2), 3)
 
-    draw_text(screen, "VIDEO", screen_width // 2, screen_height // 4, (0, 0, 0), screen_width)
     draw_text(screen, "IMAGEN 1", screen_width // 4, screen_height * 3 // 4, (0, 0, 0), screen_width)
     draw_text(screen, "IMAGEN 2", screen_width * 3 // 4, screen_height * 3 // 4, (0, 0, 0), screen_width)
+    draw_text(screen, "IMAGEN 3", screen_width * 3 // 4, screen_height // 4, (0, 0, 0), screen_width)
 
 def draw_text(surface, text, x, y, color, screen_width, font_size=24):
     pygame.font.init()
