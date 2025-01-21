@@ -34,14 +34,14 @@ def display_images_on_screen():
             screen.fill(BACKGROUND_COLOR)
 
             # Mostrar imágenes 1 y 2 ajustadas y centradas en la parte inferior
-            if media_content["image1"]:
-                display_image(screen, media_content["image1"], 0, screen_height // 2, screen_width // 2, screen_height // 2)
+            if media_content.get("image1"):
+                display_image(screen, media_content["image1"], 0, screen_height // 2, screen_width // 2, screen_height // 2, adjust_size=False)
 
-            if media_content["image2"]:
-                display_image(screen, media_content["image2"], screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2)
+            if media_content.get("image2"):
+                display_image(screen, media_content["image2"], screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2, adjust_size=False)
 
             # Mostrar imagen 3 en la parte superior sin ajustar su tamaño
-            if media_content["image3"]:
+            if media_content.get("image3"):
                 display_image(screen, media_content["image3"], 0, 0, screen_width, screen_height // 2, adjust_size=False)
 
             pygame.display.flip()
@@ -56,15 +56,20 @@ def display_image(screen, base64_string, x, y, width, height, adjust_size=True):
         image_data = base64.b64decode(base64_string)
         image = pygame.image.load(io.BytesIO(image_data))
         
-        if adjust_size:
-            image = pygame.transform.scale(image, (width, height))
+        # Redimensionar la imagen para que encaje en el contenedor sin cambiar sus proporciones
+        img_rect = image.get_rect()
+        scale_ratio = min(width / img_rect.width, height / img_rect.height)
+        new_width = int(img_rect.width * scale_ratio)
+        new_height = int(img_rect.height * scale_ratio)
+        image = pygame.transform.scale(image, (new_width, new_height))
         
         # Obtener el color promedio de la imagen para el fondo
         avg_color = pygame.transform.average_color(image)
         screen.fill(avg_color, (x, y, width, height))
 
-        # Centrar la imagen en su respectiva área
-        img_rect = image.get_rect(center=(x + width // 2, y + height // 2))
+        # Centrar la imagen en su respectiva área sin hacerla más grande que su contenedor
+        img_rect = image.get_rect()
+        img_rect.topleft = (x + (width - img_rect.width) // 2, y + (height - img_rect.height) // 2)
         screen.blit(image, img_rect)
     except Exception as e:
         print(f"Error al convertir imagen: {e}")
