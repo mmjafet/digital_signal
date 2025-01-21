@@ -5,12 +5,12 @@ import base64
 
 app = Flask(__name__)
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")  # Habilitamos WebSocket
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 media_content = {
     "video": None,  # Base64 del video
     "image1": None,  # Base64 de la imagen 1
-    "image2": None,  # Base64 de la imagen 2
+    "image2": None,   # Base64 de la imagen 2
     "image3": None
 }
 
@@ -27,10 +27,8 @@ def upload():
         return jsonify({"error": f"Posición '{position}' no válida"}), 400
 
     media_content[position] = file_data
-
-    # Emitimos un evento indicando que hubo un cambio
-    socketio.emit('media_updated', {"position": position, "message": "Contenido actualizado"})
-    
+    # Notifica a los clientes conectados que se ha actualizado el contenido
+    socketio.emit('update_media', {'position': position, 'file': file_data})
     return jsonify({"message": f"Contenido actualizado en '{position}'"}), 200
 
 @app.route('/media', methods=['GET'])
