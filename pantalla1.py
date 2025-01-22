@@ -7,7 +7,7 @@ import os
 import cv2  # Importar OpenCV
 
 # Configuración de la API
-API_URL = "https://pantalla-anuncios-rasp.onrender.com/media2"
+API_URL = "https://pantalla-anuncios-rasp.onrender.com/media"
 
 # Definir color de fondo
 BACKGROUND_COLOR = (50, 50, 50)  # Gris oscuro (puedes elegir otro color si lo prefieres)
