@@ -1,18 +1,19 @@
 import requests
 import base64
 import pygame
-from PIL import Image
 import io
-from websocket import create_connection
-import threading
+import tempfile
+import os
+import cv2  # Importar OpenCV
 
-# Configuración de la API y WebSocket
-API_URL = "http://127.0.0.1:9999/media"  # Cambia la IP del servidor correcta
-WS_URL = "ws://127.0.0.1:9999/socket.io/?transport=websocket"  # URL del WebSocket
-# Pygame - Mostrar en la pantalla de la Raspberry Pi
-def display_on_screen():
+# Configuración de la API
+API_URL = "https://pantalla-anuncios-rasp.onrender.com/media"
+
+# Definir color de fondo
+BACKGROUND_COLOR = (50, 50, 50)  # Gris oscuro (puedes elegir otro color si lo prefieres)
+
+def display_images_on_screen():
     pygame.init()
-    # Configuración de la pantalla
     info = pygame.display.Info()
     screen_width = info.current_w
     screen_height = info.current_h
@@ -20,93 +21,113 @@ def display_on_screen():
     pygame.display.set_caption("Media Display")
 
     clock = pygame.time.Clock()
+    last_media_content = None
 
-    # Hilo para manejar la recepción de mensajes del WebSocket
-    def websocket_listener():
-        ws = create_connection(WS_URL)
-        while True:
-            try:
-                result = ws.recv()
-                if result:
-                    handle_websocket_message(result, screen, screen_width, screen_height)
-            except Exception as e:
-                print(f"Error al recibir mensaje del WebSocket: {e}")
-                break
-
-    # Iniciar el hilo del WebSocket
-    threading.Thread(target=websocket_listener, daemon=True).start()
-
-    # Mantener la ventana abierta
     while True:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                return
+        try:
+            # Solicitar a la API con long polling
+            response = requests.get(API_URL, stream=True)  # Usar stream=True para mantener la conexión abierta
+            media_content = response.json()
 
-        clock.tick(60)
+            # Verificar si ha cambiado el contenido de imagen
+            if media_content != last_media_content:
+                last_media_content = media_content
 
-def handle_websocket_message(message, screen, screen_width, screen_height):
-    try:
-        response = requests.get(API_URL)
-        media_content = response.json()
+            # Rellenar el fondo con un color
+            screen.fill(BACKGROUND_COLOR)
 
-        screen.fill((0, 0, 0))  # Fondo negro
+            # Mostrar imágenes 1 y 2 ajustadas y centradas en la parte inferior
+            if media_content.get("image1"):
+                display_image(screen, media_content["image1"], 0, screen_height // 2, screen_width // 2, screen_height // 2, adjust_size=False)
 
-        # Mostrar imagen 1
-        if media_content["image1"]:
-            img_surface = base64_to_surface(media_content["image1"], screen_width // 2, screen_height // 2)
-            if img_surface:
-                screen.blit(img_surface, (0, screen_height // 2))
+            if media_content.get("image2"):
+                display_image(screen, media_content["image2"], screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2, adjust_size=False)
 
-        # Mostrar imagen 2
-        if media_content["image2"]:
-            img_surface = base64_to_surface(media_content["image2"], screen_width // 2, screen_height // 2)
-            if img_surface:
-                screen.blit(img_surface, (screen_width // 2, screen_height // 2))
+            # Reproducir video en la parte superior
+            if media_content.get("video"):
+                play_video(screen, media_content["video"], 0, 0, screen_width, screen_height // 2)
 
-        # Mostrar imagen 3
-        if media_content["image3"]:
-            img_surface = base64_to_surface(media_content["image3"], screen_width // 2, screen_height // 2)
-            if img_surface:
-                screen.blit(img_surface, (screen_width // 2, 0))
+            pygame.display.flip()
 
-        pygame.display.flip()
+        except Exception as e:
+            print(f"Error al obtener o mostrar contenido multimedia: {e}")
 
-    except Exception as e:
-        print(f"Error al actualizar contenido multimedia: {e}")
+        clock.tick(30)  # Ajustar a 30 FPS para evitar sobrecarga
 
-def base64_to_surface(base64_string, max_width, max_height):
+def display_image(screen, base64_string, x, y, width, height, adjust_size=True):
     try:
         image_data = base64.b64decode(base64_string)
-        image = Image.open(io.BytesIO(image_data))
+        image = pygame.image.load(io.BytesIO(image_data))
+        
+        # Redimensionar la imagen para que encaje en el contenedor sin cambiar sus proporciones
+        img_rect = image.get_rect()
+        scale_ratio = min(width / img_rect.width, height / img_rect.height)
+        new_width = int(img_rect.width * scale_ratio)
+        new_height = int(img_rect.height * scale_ratio)
+        image = pygame.transform.scale(image, (new_width, new_height))
+        
+        # Obtener el color promedio de la imagen para el fondo
+        avg_color = pygame.transform.average_color(image)
+        screen.fill(avg_color, (x, y, width, height))
 
-        image.thumbnail((max_width, max_height), Image.LANCZOS)
-
-        mode = image.mode
-        size = image.size
-        data = image.tobytes()
-        return pygame.image.fromstring(data, size, mode)
+        # Centrar la imagen en su respectiva área sin hacerla más grande que su contenedor
+        img_rect = image.get_rect()
+        img_rect.topleft = (x + (width - img_rect.width) // 2, y + (height - img_rect.height) // 2)
+        screen.blit(image, img_rect)
     except Exception as e:
         print(f"Error al convertir imagen: {e}")
-        return None
 
-def clear_screen_with_message(screen, screen_width, screen_height):
-    screen.fill((200, 200, 200))
+def play_video(screen, base64_string, x, y, width, height):
+    try:
+        # Decodificar el Base64 a un archivo temporal
+        video_data = base64.b64decode(base64_string)
+        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp4')
+        temp_file.write(video_data)
+        temp_file.close()
 
-    pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, 0, screen_width, screen_height // 2), 3)
-    pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(0, screen_height // 2, screen_width // 2, screen_height // 2), 3)
-    pygame.draw.rect(screen, (0, 0, 0), pygame.Rect(screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2), 3)
+        # Usar OpenCV para reproducir el video
+        cap = cv2.VideoCapture(temp_file.name)
+        
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            # Obtener dimensiones del frame
+            frame_height, frame_width = frame.shape[:2]
+            
+            # Calcular la relación de escala para mantener las proporciones
+            scale_ratio = min(width / frame_width, height / frame_height)
+            new_width = int(frame_width * scale_ratio)
+            new_height = int(frame_height * scale_ratio)
 
-    draw_text(screen, "IMAGEN 1", screen_width // 4, screen_height * 3 // 4, (0, 0, 0), screen_width)
-    draw_text(screen, "IMAGEN 2", screen_width * 3 // 4, screen_height * 3 // 4, (0, 0, 0), screen_width)
-    draw_text(screen, "IMAGEN 3", screen_width * 3 // 4, screen_height // 4, (0, 0, 0), screen_width)
+            # Redimensionar el frame
+            frame = cv2.resize(frame, (new_width, new_height))
 
-def draw_text(surface, text, x, y, color, screen_width, font_size=24):
-    pygame.font.init()
-    font = pygame.font.SysFont("Arial", font_size)
-    text_surface = font.render(text, True, color)
-    text_rect = text_surface.get_rect(center=(x, y))
-    surface.blit(text_surface, text_rect)
+            # Convertir frame de BGR a RGB para pygame
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            
+            # Crear la superficie de pygame
+            frame_surface = pygame.surfarray.make_surface(frame.swapaxes(0, 1))
+            
+            # Centrar el frame redimensionado en el contenedor
+            frame_rect = frame_surface.get_rect()
+            frame_rect.topleft = (x + (width - new_width) // 2, y + (height - new_height) // 2)
 
-if __name__ == '__main__':
-    display_on_screen()
+            # Dibujar el fondo
+            screen.fill(BACKGROUND_COLOR, (x, y, width, height))
+            
+            # Dibujar el frame en la pantalla
+            screen.blit(frame_surface, frame_rect)
+            pygame.display.update()
+            pygame.time.delay(int(1000 / cap.get(cv2.CAP_PROP_FPS)))
+
+        cap.release()
+        # Eliminar el archivo temporal
+        os.remove(temp_file.name)
+
+    except Exception as e:
+        print(f"Error al reproducir video: {e}")
+
+if __name__ == '__main__':                              
+    display_images_on_screen()

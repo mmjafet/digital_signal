@@ -108,5 +108,5 @@ def play_video(screen, base64_string, x, y, width, height):
     except Exception as e:
         print(f"Error al reproducir video: {e}")
 
-if __name__ == '__main__':
+if __name__ == '__main__':                              
     display_images_on_screen()
