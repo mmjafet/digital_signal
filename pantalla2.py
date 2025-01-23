@@ -38,18 +38,18 @@ def display_images_on_screen():
             screen.fill(BACKGROUND_COLOR)
 
             # Mostrar imágenes 1 y 2 ajustadas y centradas en la parte inferior
-            if media_content.get("image1"):
+            if media_content.get("image1") and "limpiar" not in media_content["image1"].lower():
                 display_image(screen, media_content["image1"], 0, screen_height // 2, screen_width // 2, screen_height // 2, "Imagen 1")
             else:
                 display_text(screen, "Imagen 1", 0, screen_height // 2, screen_width // 2, screen_height // 2)
 
-            if media_content.get("image2"):
+            if media_content.get("image2") and "limpiar" not in media_content["image2"].lower():
                 display_image(screen, media_content["image2"], screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2, "Imagen 2")
             else:
                 display_text(screen, "Imagen 2", screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2)
 
             # Reproducir video en la parte superior
-            if media_content.get("video"):
+            if media_content.get("video") and "limpiar" not in media_content["video"].lower():
                 play_video(screen, media_content["video"], 0, 0, screen_width, screen_height // 2)
             else:
                 display_text(screen, "Video", 0, 0, screen_width, screen_height // 2)
