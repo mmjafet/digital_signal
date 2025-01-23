@@ -11,6 +11,7 @@ API_URL = "https://pantalla-anuncios-rasp.onrender.com/media"
 
 # Definir color de fondo
 BACKGROUND_COLOR = (50, 50, 50)  # Gris oscuro (puedes elegir otro color si lo prefieres)
+TEXT_COLOR = (255, 255, 255)  # Blanco para el texto
 
 def display_images_on_screen():
     pygame.init()
@@ -38,14 +39,20 @@ def display_images_on_screen():
 
             # Mostrar imágenes 1 y 2 ajustadas y centradas en la parte inferior
             if media_content.get("image1"):
-                display_image(screen, media_content["image1"], 0, screen_height // 2, screen_width // 2, screen_height // 2, adjust_size=False)
+                display_image(screen, media_content["image1"], 0, screen_height // 2, screen_width // 2, screen_height // 2, "Imagen 1")
+            else:
+                display_text(screen, "Imagen 1", 0, screen_height // 2, screen_width // 2, screen_height // 2)
 
             if media_content.get("image2"):
-                display_image(screen, media_content["image2"], screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2, adjust_size=False)
+                display_image(screen, media_content["image2"], screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2, "Imagen 2")
+            else:
+                display_text(screen, "Imagen 2", screen_width // 2, screen_height // 2, screen_width // 2, screen_height // 2)
 
             # Reproducir video en la parte superior
             if media_content.get("video"):
                 play_video(screen, media_content["video"], 0, 0, screen_width, screen_height // 2)
+            else:
+                display_text(screen, "Video", 0, 0, screen_width, screen_height // 2)
 
             pygame.display.flip()
 
@@ -54,7 +61,7 @@ def display_images_on_screen():
 
         clock.tick(30)  # Ajustar a 30 FPS para evitar sobrecarga
 
-def display_image(screen, base64_string, x, y, width, height, adjust_size=True):
+def display_image(screen, base64_string, x, y, width, height, label):
     try:
         image_data = base64.b64decode(base64_string)
         image = pygame.image.load(io.BytesIO(image_data))
@@ -75,7 +82,8 @@ def display_image(screen, base64_string, x, y, width, height, adjust_size=True):
         img_rect.topleft = (x + (width - img_rect.width) // 2, y + (height - img_rect.height) // 2)
         screen.blit(image, img_rect)
     except Exception as e:
-        print(f"Error al convertir imagen: {e}")
+        print(f"Error al convertir imagen ({label}): {e}")
+        display_text(screen, label, x, y, width, height)
 
 def play_video(screen, base64_string, x, y, width, height):
     try:
@@ -128,6 +136,16 @@ def play_video(screen, base64_string, x, y, width, height):
 
     except Exception as e:
         print(f"Error al reproducir video: {e}")
+        display_text(screen, "Video", x, y, width, height)
+
+def display_text(screen, text, x, y, width, height):
+    font = pygame.font.Font(None, 36)
+    text_surface = font.render(text, True, TEXT_COLOR)
+    text_rect = text_surface.get_rect(center=(x + width // 2, y + height // 2))
+
+    # Dibujar el fondo y el texto centrado
+    screen.fill(BACKGROUND_COLOR, (x, y, width, height))
+    screen.blit(text_surface, text_rect)
 
 if __name__ == '__main__':                              
     display_images_on_screen()
